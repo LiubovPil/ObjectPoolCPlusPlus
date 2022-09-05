@@ -3,26 +3,60 @@
 
 #include "Test_runner.h"
 
-#include <algorithm>
 #include <iostream>
 #include <string>
 #include <queue>
-#include <stdexcept>
 #include <set>
+#include <stdexcept>
+
 using namespace std;
 
 template <class T>
 class ObjectPool {
 public:
-	T* Allocate();
-	T* TryAllocate();
+	//template <typename T>
+	//T* ObjectPool<T>::Allocate() {...}
+	T* Allocate() {
+		if (!freed_pool.empty()){
+			T* object_pool = freed_pool.front();
+			freed_pool.pop();
+			dedicated_pool.insert(object_pool);
+			return object_pool;
+		}
+		else {
+			dedicated_pool.insert(new T);
+			return *dedicated_pool.begin();
+		}
+	}
+	T* TryAllocate() {
+		if (!freed_pool.empty())
+			Allocate();
+		else
+			return nullptr;
+	}
 
-	void Deallocate(T* object);
+	void Deallocate(T* object) {
+		if (dedicated_pool.find(object) == dedicated_pool.end()) {
+			throw invalid_argument("There is no object");
+		}
+		dedicated_pool.erase(object);
+		freed_pool.push(object);
+	}
 
-	~ObjectPool();
+	~ObjectPool() {
+		for (auto s : dedicated_pool)
+			delete s;
+		while (!freed_pool.empty())
+		{
+			auto q = freed_pool.front();
+			freed_pool.pop();
+			delete q;
+		}
+	}
 
 private:
-	// Добавьте сюда поля
+	queue<T*> freed_pool;
+	set<T*> dedicated_pool;
 };
 
 void TestObjectPool() {
